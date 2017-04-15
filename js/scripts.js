@@ -859,7 +859,7 @@ mr = (function (mr, $, window, document){
 
                 jQuery.ajax({
                     type: "POST",
-                    url: "mail/mail.php",
+                    url: "https://formspree.io/sudharsan.sivasankaran@gmail.com",
                     data: thisForm.serialize()+"&url="+window.location.href,
                     success: function(response) {
                         // Swiftmailer always sends back a number representing number of emails sent.
