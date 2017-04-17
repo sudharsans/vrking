@@ -782,44 +782,22 @@ mr = (function (mr, $, window, document){
                 
                 try{
                     $.ajax({
-                        url: thisForm.attr('action'),
-                        crossDomain: true,
-                        data: thisForm.serialize(),
-                        method: "GET",
-                        cache: false,
-                        dataType: 'json',
-                        contentType: 'application/json; charset=utf-8',
-                        success: function(data){
-                            // Request was a success, what was the response?
-
-                            if (data.result !== "success" && data.Status !== 200) {
-                                
-                                // Got an error from Mail Chimp or Campaign Monitor
-
-                                // Keep the current error text in a data attribute on the form
-                                formError.attr('original-error', formError.text());
-                                // Show the error with the returned error text.
-                                formError.html(data.msg).stop(true).fadeIn(1000);
-                                formSuccess.stop(true).fadeOut(1000);
-
-                                submitButton.removeClass('btn--loading');
-                            } else {
-                                
-                                // Got success from Mail Chimp or Campaign Monitor
-                                
-                                submitButton.removeClass('btn--loading');
-
-                                successRedirect = thisForm.attr('data-success-redirect');
-                                // For some browsers, if empty `successRedirect` is undefined; for others,
-                                // `successRedirect` is false.  Check for both.
-                                if (typeof successRedirect !== typeof undefined && successRedirect !== false && successRedirect !== "") {
-                                    window.location = successRedirect;
-                                }else{
-                                    mr.forms.resetForm(thisForm);
-                                    mr.forms.showFormSuccess(formSuccess, formError, 1000, 5000, 500);
-                                }
-                            }
-                        }
+                    type: "POST",
+                    data: thisForm.serialize()+"&url="+window.location.href,
+                    url:'https://formspree.io/sudharsan.sivasankaran@gmail.com',
+                    method:'POST',
+                    dataType:"json",
+                    beforeSend: function() {
+                        thisForm.append('<div class="form-success">Sending message…</div>');
+                    },
+                    success: function(data) {
+                        thisForm.find('.alert--loading').hide();
+                        thisForm.append('<div class="form-success">Message sent!</div>');
+                    },
+                    error: function(err) {
+                        thisForm.find('.alert--loading').hide();
+                        thisForm.append('<div class=" form-error">Ops, there was an error.</div>');
+                    }
                     });
                 }catch(err){
                     // Keep the current error text in a data attribute on the form
