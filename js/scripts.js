@@ -784,7 +784,7 @@ mr = (function (mr, $, window, document){
                     $.ajax({
                     type: "POST",
                     data: thisForm.serialize()+"&url="+window.location.href,
-                    url:'https://formspree.io/sudharsan.sivasankaran@gmail.com',
+                    url:'https://vrmail.herokuapp.com/send_email',
                     method:'POST',
                     dataType:"json",
                     beforeSend: function() {
