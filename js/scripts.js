@@ -390,10 +390,10 @@ mr = (function (mr, $, window, document){
         
         //////////////// Append .background-image-holder <img>'s as CSS backgrounds
 
-	    $('.background-image-holder').each(function() {
-	        var imgSrc = $(this).children('img').attr('src');
-	        $(this).css('background', 'url("' + imgSrc + '")').css('background-position', 'initial').css('opacity','1');
-	    });
+        $('.background-image-holder').each(function() {
+            var imgSrc = $(this).children('img').attr('src');
+            $(this).css('background', 'url("' + imgSrc + '")').css('background-position', 'initial').css('opacity','1');
+        });
     };
 
     mr.backgrounds = {
@@ -782,22 +782,44 @@ mr = (function (mr, $, window, document){
                 
                 try{
                     $.ajax({
-                    type: "POST",
-                    data: thisForm.serialize()+"&url="+window.location.href,
-                    url:'https://vrmail.herokuapp.com/send_email',
-                    method:'POST',
-                    dataType:"json",
-                    beforeSend: function() {
-                        thisForm.append('<div class="form-success">Sending message…</div>');
-                    },
-                    success: function(data) {
-                        thisForm.find('.alert--loading').hide();
-                        thisForm.append('<div class="form-success">Message sent!</div>');
-                    },
-                    error: function(err) {
-                        thisForm.find('.alert--loading').hide();
-                        thisForm.append('<div class=" form-error">Ops, there was an error.</div>');
-                    }
+                        url: thisForm.attr('action'),
+                        crossDomain: true,
+                        data: thisForm.serialize(),
+                        method: "GET",
+                        cache: false,
+                        dataType: 'json',
+                        contentType: 'application/json; charset=utf-8',
+                        success: function(data){
+                            // Request was a success, what was the response?
+
+                            if (data.result !== "success" && data.Status !== 200) {
+                                
+                                // Got an error from Mail Chimp or Campaign Monitor
+
+                                // Keep the current error text in a data attribute on the form
+                                formError.attr('original-error', formError.text());
+                                // Show the error with the returned error text.
+                                formError.html(data.msg).stop(true).fadeIn(1000);
+                                formSuccess.stop(true).fadeOut(1000);
+
+                                submitButton.removeClass('btn--loading');
+                            } else {
+                                
+                                // Got success from Mail Chimp or Campaign Monitor
+                                
+                                submitButton.removeClass('btn--loading');
+
+                                successRedirect = thisForm.attr('data-success-redirect');
+                                // For some browsers, if empty `successRedirect` is undefined; for others,
+                                // `successRedirect` is false.  Check for both.
+                                if (typeof successRedirect !== typeof undefined && successRedirect !== false && successRedirect !== "") {
+                                    window.location = successRedirect;
+                                }else{
+                                    mr.forms.resetForm(thisForm);
+                                    mr.forms.showFormSuccess(formSuccess, formError, 1000, 5000, 500);
+                                }
+                            }
+                        }
                     });
                 }catch(err){
                     // Keep the current error text in a data attribute on the form
@@ -837,35 +859,15 @@ mr = (function (mr, $, window, document){
 
                 jQuery.ajax({
                     type: "POST",
-                    url: "https://formspree.io/sudharsan.sivasankaran@gmail.com",
+                    url: "http://vrmail.herokuapp.com/send_email",
                     data: thisForm.serialize()+"&url="+window.location.href,
                     success: function(response) {
                         // Swiftmailer always sends back a number representing number of emails sent.
                         // If this is numeric (not Swift Mailer error text) AND greater than 0 then show success message.
 
                         submitButton.removeClass('btn--loading');
-
-                        if ($.isNumeric(response)) {
-                            if (parseInt(response,10) > 0) {
-                                // For some browsers, if empty 'successRedirect' is undefined; for others,
-                                // 'successRedirect' is false.  Check for both.
-                                successRedirect = thisForm.attr('data-success-redirect');
-                                if (typeof successRedirect !== typeof undefined && successRedirect !== false && successRedirect !== "") {
-                                    window.location = successRedirect;
-                                }
-
-                                mr.forms.resetForm(thisForm);
-                                mr.forms.showFormSuccess(formSuccess, formError, 1000, 5000, 500);
-                            }
-                        }
-                        // If error text was returned, put the text in the .form-error div and show it.
-                        else {
-                            // Keep the current error text in a data attribute on the form
-                            formError.attr('original-error', formError.text());
-                            // Show the error with the returned error text.
-                            formError.text(response).stop(true).fadeIn(1000);
-                            formSuccess.stop(true).fadeOut(1000);
-                        }
+                        mr.forms.resetForm(thisForm);
+                        mr.forms.showFormSuccess(formSuccess, formError, 1000, 5000, 500);
                     },
                     error: function(errorObject, errorText, errorHTTP) {
                         // Keep the current error text in a data attribute on the form
@@ -982,52 +984,52 @@ mr = (function (mr, $, window, document){
     "use strict";
     
     var documentReady = function($){
-    	$('[data-gradient-bg]').each(function(index,element){
-    		var granimParent = $(this),
-    			granimID 	 = 'granim-'+index+'',
-				colours 	 = granimParent.attr('data-gradient-bg'),
-				pairs        = [],
-				tempPair     = [],
-				count,
-				passes,
-				i;
+        $('[data-gradient-bg]').each(function(index,element){
+            var granimParent = $(this),
+                granimID     = 'granim-'+index+'',
+                colours      = granimParent.attr('data-gradient-bg'),
+                pairs        = [],
+                tempPair     = [],
+                count,
+                passes,
+                i;
 
-			// Canvas element forms the gradient background
-			granimParent.prepend('<canvas id="'+granimID+'"></canvas>');
+            // Canvas element forms the gradient background
+            granimParent.prepend('<canvas id="'+granimID+'"></canvas>');
 
             // Regular expression to match comma separated list of hex colour values
             passes = /^(#[0-9|a-f|A-F]{6}){1}([ ]*,[ ]*#[0-9|a-f|A-F]{6})*$/.test(colours);
 
             if(passes === true){
-            	colours = colours.replace(' ','');
-            	colours = colours.split(',');
-            	count = colours.length;
-            	// If number of colours is odd - duplicate last colour to make even array
-            	if(count%2 !== 0){
-            		colours.push(colours[count-1]);
-            	}
-            	for(i = 0; i < (count/2); i++){
+                colours = colours.replace(' ','');
+                colours = colours.split(',');
+                count = colours.length;
+                // If number of colours is odd - duplicate last colour to make even array
+                if(count%2 !== 0){
+                    colours.push(colours[count-1]);
+                }
+                for(i = 0; i < (count/2); i++){
                     tempPair = [];
                     tempPair.push(colours.shift());
                     tempPair.push(colours.shift());
                     pairs.push(tempPair);
-            	}
+                }
             }
 
-    		var granimElement = $(this);
-    		var granimInstance = new Granim({
-			    element: '#'+granimID,
-			    name: 'basic-gradient',
-			    direction: 'left-right',
-			    opacity: [1, 1],
-			    isPausedWhenNotInView: true,
-			    states : {
-			        "default-state": {
-			            gradients: pairs
-			        }
-			    }
-			});
-    	});        
+            var granimElement = $(this);
+            var granimInstance = new Granim({
+                element: '#'+granimID,
+                name: 'basic-gradient',
+                direction: 'left-right',
+                opacity: [1, 1],
+                isPausedWhenNotInView: true,
+                states : {
+                    "default-state": {
+                        gradients: pairs
+                    }
+                }
+            });
+        });        
     };
 
     mr.granim = {
@@ -1574,18 +1576,18 @@ mr = (function (mr, $, window, document){
 
     var documentReady = function($){
   
-  	var form,checkbox,label,id,parent,radio;
+    var form,checkbox,label,id,parent,radio;
     
     // Treat Campaign Monitor forms
     $('form[action*="createsend.com"]').each(function(){
-    	form = $(this);
+        form = $(this);
 
         // Override browser validation and allow us to use our own
         form.attr('novalidate', 'novalidate');
 
-    	// Give each text input a placeholder value
+        // Give each text input a placeholder value
 
-    	if(!form.is('.form--no-placeholders')){
+        if(!form.is('.form--no-placeholders')){
             form.find('input:not([checkbox]):not([radio])').each(function(){
                 var $input = $(this);
                 if(typeof $input.attr('placeholder') !== typeof undefined){
@@ -1612,28 +1614,28 @@ mr = (function (mr, $, window, document){
         }
 
 
-    	// Wrap select elements in template code
+        // Wrap select elements in template code
 
-    	form.find('select').wrap('<div class="input-select"></div>');
+        form.find('select').wrap('<div class="input-select"></div>');
 
-    	// Wrap radios elements in template code
+        // Wrap radios elements in template code
 
-    	form.find('input[type="radio"]').wrap('<div class="input-radio"></div>');
+        form.find('input[type="radio"]').wrap('<div class="input-radio"></div>');
 
-    	// Wrap checkbox elements in template code
+        // Wrap checkbox elements in template code
 
-    	form.find('input[type="checkbox"]').each(function(){
-    		checkbox = $(this);
-    		id = checkbox.attr('id');
-    		label = form.find('label[for='+id+']');
-    		
-    		checkbox.before('<div class="input-checkbox" data-id="'+id+'"></div>');
-    		$('.input-checkbox[data-id="'+id+'"]').prepend(checkbox);
-    		$('.input-checkbox[data-id="'+id+'"]').prepend(label);
-    		$('.input-checkbox[data-id="'+id+'"]').prepend('<div class="inner"></div>');
-    	});
+        form.find('input[type="checkbox"]').each(function(){
+            checkbox = $(this);
+            id = checkbox.attr('id');
+            label = form.find('label[for='+id+']');
+            
+            checkbox.before('<div class="input-checkbox" data-id="'+id+'"></div>');
+            $('.input-checkbox[data-id="'+id+'"]').prepend(checkbox);
+            $('.input-checkbox[data-id="'+id+'"]').prepend(label);
+            $('.input-checkbox[data-id="'+id+'"]').prepend('<div class="inner"></div>');
+        });
 
-    	form.find('button[type="submit"]').each(function(){
+        form.find('button[type="submit"]').each(function(){
             var button = $(this);
             button.addClass('btn');
             if(button.parent().is('p')){
@@ -1651,15 +1653,15 @@ mr = (function (mr, $, window, document){
 
     // Treat MailChimp forms
     $('form[action*="list-manage.com"]').each(function(){
-    	form = $(this);
+        form = $(this);
 
         // Override browser validation and allow us to use our own
         form.attr('novalidate', 'novalidate');
 
-    	// Give each text input a placeholder value
+        // Give each text input a placeholder value
         if(!form.is('.form--no-placeholders')){
-        	form.find('input:not([checkbox]):not([radio])').each(function(){
-        		var $input = $(this);
+            form.find('input:not([checkbox]):not([radio])').each(function(){
+                var $input = $(this);
                 if(typeof $input.attr('placeholder') !== typeof undefined){
                     if($input.attr('placeholder') === ""){
                         if($input.siblings('label').length){
@@ -1675,7 +1677,7 @@ mr = (function (mr, $, window, document){
                         $input.siblings('label').first().remove();
                     }
                 }
-        	});
+            });
         }else{
             form.find('input[placeholder]').removeAttr('placeholder');
         }
@@ -1689,31 +1691,31 @@ mr = (function (mr, $, window, document){
             });
         }
 
-    	// Wrap select elements in template code
+        // Wrap select elements in template code
 
-    	form.find('select').wrap('<div class="input-select"></div>');
+        form.find('select').wrap('<div class="input-select"></div>');
 
-    	// Wrap checboxes elements in template code
+        // Wrap checboxes elements in template code
 
-    	form.find('input[type="checkbox"]').each(function(){
-    		checkbox = $(this);
-    		parent = checkbox.parent();
-    		label = parent.find('label');
-    		checkbox.before('<div class="input-checkbox"><div class="inner"></div></div>');
-    		parent.find('.input-checkbox').append(checkbox);
-    		parent.find('.input-checkbox').append(label);
-    	});
+        form.find('input[type="checkbox"]').each(function(){
+            checkbox = $(this);
+            parent = checkbox.parent();
+            label = parent.find('label');
+            checkbox.before('<div class="input-checkbox"><div class="inner"></div></div>');
+            parent.find('.input-checkbox').append(checkbox);
+            parent.find('.input-checkbox').append(label);
+        });
 
-    	// Wrap radio elements in template code
+        // Wrap radio elements in template code
 
-    	form.find('input[type="radio"]').each(function(){
-    		radio = $(this);
-    		parent = radio.closest('li');
-    		label = parent.find('label');
-    		radio.before('<div class="input-radio"><div class="inner"></div></div>');
-    		parent.find('.input-radio').prepend(radio);
-    		parent.find('.input-radio').prepend(label);
-    	});
+        form.find('input[type="radio"]').each(function(){
+            radio = $(this);
+            parent = radio.closest('li');
+            label = parent.find('label');
+            radio.before('<div class="input-radio"><div class="inner"></div></div>');
+            parent.find('.input-radio').prepend(radio);
+            parent.find('.input-radio').prepend(label);
+        });
 
         // Convert MailChimp input[type="submit"] to div.button
 
@@ -1755,10 +1757,10 @@ mr = (function (mr, $, window, document){
 
     }); 
 
-	// Reinitialize the forms so interactions work as they should
+    // Reinitialize the forms so interactions work as they should
 
-	mr.forms.documentReady(mr.setContext('form.form--active'));
-		
+    mr.forms.documentReady(mr.setContext('form.form--active'));
+        
   };
 
   mr.newsletters.documentReady = documentReady;
@@ -1931,88 +1933,88 @@ mr = (function (mr, $, window, document){
 
 //////////////// EasyPiecharts
 mr = (function (mr, $, window, document){
-	  "use strict";
+      "use strict";
 
-		mr.easypiecharts = {};
-		mr.easypiecharts.pies = [];
+        mr.easypiecharts = {};
+        mr.easypiecharts.pies = [];
 
-		var documentReady = function($){
+        var documentReady = function($){
 
-			mr.easypiecharts.init = function(){
+            mr.easypiecharts.init = function(){
 
-				mr.easypiecharts.pies = [];
+                mr.easypiecharts.pies = [];
             
-				$('.radial').each(function(){
-				  var pieObject  = {},
-					  currentPie = jQuery(this);
+                $('.radial').each(function(){
+                  var pieObject  = {},
+                      currentPie = jQuery(this);
 
-					  pieObject.element = currentPie;
-					  pieObject.value = parseInt(currentPie.attr('data-value'),10);
-					  pieObject.top = currentPie.offset().top;
-					  pieObject.height = currentPie.height()/2;
-					  pieObject.active = false;
-					  mr.easypiecharts.pies.push(pieObject);
-				});
-			};
+                      pieObject.element = currentPie;
+                      pieObject.value = parseInt(currentPie.attr('data-value'),10);
+                      pieObject.top = currentPie.offset().top;
+                      pieObject.height = currentPie.height()/2;
+                      pieObject.active = false;
+                      mr.easypiecharts.pies.push(pieObject);
+                });
+            };
 
-			mr.easypiecharts.activate = function(){
-				mr.easypiecharts.pies.forEach(function(pie){
-					if(Math.round((mr.scroll.y + mr.window.height)) >= Math.round(pie.top+pie.height)){
-						if(pie.active === false){
-							
-		                	pie.element.data('easyPieChart').enableAnimation();
-		                	pie.element.data('easyPieChart').update(pie.value);
-		                	pie.element.addClass('radial--active');
-		                	pie.active = true;
-						}
-		            }
-	        	});
-			};
+            mr.easypiecharts.activate = function(){
+                mr.easypiecharts.pies.forEach(function(pie){
+                    if(Math.round((mr.scroll.y + mr.window.height)) >= Math.round(pie.top+pie.height)){
+                        if(pie.active === false){
+                            
+                            pie.element.data('easyPieChart').enableAnimation();
+                            pie.element.data('easyPieChart').update(pie.value);
+                            pie.element.addClass('radial--active');
+                            pie.active = true;
+                        }
+                    }
+                });
+            };
 
-		  	$('.radial').each(function(){
-		  		var chart    = jQuery(this),
-		  			value    = 0,
-		  			color    = '#000000',
-		  			time     = 2000,
-		  			pieSize  = 110,
-		  			barWidth = 3;
+            $('.radial').each(function(){
+                var chart    = jQuery(this),
+                    value    = 0,
+                    color    = '#000000',
+                    time     = 2000,
+                    pieSize  = 110,
+                    barWidth = 3;
 
-		  		if(typeof chart.attr('data-timing') !== typeof undefined){
-		  			time = chart.attr('data-timing')*1;
-		  		}
-		  		if(typeof chart.attr('data-color') !== typeof undefined){
-		  			color = chart.attr('data-color');
-		  		}
-		  		if(typeof chart.attr('data-size') !== typeof undefined){
-		  			pieSize = chart.attr('data-size');
-		  		}
-		  		if(typeof chart.attr('data-bar-width') !== typeof undefined){
-		  			barWidth = chart.attr('data-bar-width');
-		  		}
-		  		chart.css('height',pieSize).css('width',pieSize);
+                if(typeof chart.attr('data-timing') !== typeof undefined){
+                    time = chart.attr('data-timing')*1;
+                }
+                if(typeof chart.attr('data-color') !== typeof undefined){
+                    color = chart.attr('data-color');
+                }
+                if(typeof chart.attr('data-size') !== typeof undefined){
+                    pieSize = chart.attr('data-size');
+                }
+                if(typeof chart.attr('data-bar-width') !== typeof undefined){
+                    barWidth = chart.attr('data-bar-width');
+                }
+                chart.css('height',pieSize).css('width',pieSize);
 
-		  		chart.easyPieChart({
-		  			animate: ({duration: time, enabled: true}),
-		  			barColor: color,
-		  			scaleColor: false,
-		  			size: pieSize,
-		  			lineWidth: barWidth
-		  		});
-		  		chart.data('easyPieChart').update(0);
-		  	});
+                chart.easyPieChart({
+                    animate: ({duration: time, enabled: true}),
+                    barColor: color,
+                    scaleColor: false,
+                    size: pieSize,
+                    lineWidth: barWidth
+                });
+                chart.data('easyPieChart').update(0);
+            });
 
-		  	if($('.radial').length){
-		  		mr.easypiecharts.init();
-		  		mr.easypiecharts.activate();
-		  		mr.scroll.listeners.push(mr.easypiecharts.activate);
-		  	}
+            if($('.radial').length){
+                mr.easypiecharts.init();
+                mr.easypiecharts.activate();
+                mr.scroll.listeners.push(mr.easypiecharts.activate);
+            }
 
-	  };
+      };
 
-	  mr.easypiecharts.documentReady = documentReady;
+      mr.easypiecharts.documentReady = documentReady;
 
-	  mr.components.documentReadyDeferred.push(documentReady);
-	  return mr;
+      mr.components.documentReadyDeferred.push(documentReady);
+      return mr;
 
 }(mr, jQuery, window, document));
 
@@ -2236,30 +2238,30 @@ mr = (function (mr, $, window, document){
     
     var documentReady = function($){
         $('[data-toggle-class]').each(function(){
-        	var element = $(this),
+            var element = $(this),
                 data    = element.attr('data-toggle-class').split("|");
-        		
+                
 
             $(data).each(function(){
                 var candidate     = element,
                     dataArray     = [],
-            	    toggleClass   = '',
-            	    toggleElement = '',
+                    toggleClass   = '',
+                    toggleElement = '',
                     dataArray = this.split(";");
 
-            	if(dataArray.length === 2){
-            		toggleElement = dataArray[0];
-            		toggleClass   = dataArray[1];
-            		$(candidate).on('click',function(){
+                if(dataArray.length === 2){
+                    toggleElement = dataArray[0];
+                    toggleClass   = dataArray[1];
+                    $(candidate).on('click',function(){
                         if(!candidate.hasClass('toggled-class')){
                             candidate.toggleClass('toggled-class');
                         }
-            			$(toggleElement).toggleClass(toggleClass);
-            			return false;
-            		});
-            	}else{
-            		console.log('Error in [data-toggle-class] attribute. This attribute accepts an element, or comma separated elements terminated witha ";" followed by a class name to toggle');
-            	}
+                        $(toggleElement).toggleClass(toggleClass);
+                        return false;
+                    });
+                }else{
+                    console.log('Error in [data-toggle-class] attribute. This attribute accepts an element, or comma separated elements terminated witha ";" followed by a class name to toggle');
+                }
             });
         });
     };
@@ -2367,60 +2369,60 @@ mr = (function (mr, $, window, document){
 mr = (function (mr, $, window, document){
     "use strict";
     
-	  var documentReady = function($){
-	      
-			//////////////// Youtube Background
+      var documentReady = function($){
+          
+            //////////////// Youtube Background
 
-			if($('.youtube-background').length){
-				$('.youtube-background').each(function(){
-					var player = $(this);
-					var vidURL = $(this).attr('data-video-url');
-					var startAt = $(this).attr('data-start-at');
-					player.attr('data-property','{videoURL:"'+vidURL+'",containment:"self",autoPlay:true, mute:true, startAt:'+startAt+', opacity:1}');
-					player.closest('.videobg').append('<div class="loading-indicator"></div>');
-					player.YTPlayer();
-					player.on("YTPStart",function(){
-				  		player.closest('.videobg').addClass('video-active');
-					});	
-				});
-			}
+            if($('.youtube-background').length){
+                $('.youtube-background').each(function(){
+                    var player = $(this);
+                    var vidURL = $(this).attr('data-video-url');
+                    var startAt = $(this).attr('data-start-at');
+                    player.attr('data-property','{videoURL:"'+vidURL+'",containment:"self",autoPlay:true, mute:true, startAt:'+startAt+', opacity:1}');
+                    player.closest('.videobg').append('<div class="loading-indicator"></div>');
+                    player.YTPlayer();
+                    player.on("YTPStart",function(){
+                        player.closest('.videobg').addClass('video-active');
+                    }); 
+                });
+            }
 
-			if($('.videobg').find('video').length){
-				$('.videobg').find('video').closest('.videobg').addClass('video-active');
-			} 
+            if($('.videobg').find('video').length){
+                $('.videobg').find('video').closest('.videobg').addClass('video-active');
+            } 
 
-			//////////////// Video Cover Play Icons
+            //////////////// Video Cover Play Icons
 
-			$('.video-cover').each(function(){
-			    var videoCover = $(this);
-			    if(videoCover.find('iframe').length){
-			        videoCover.find('iframe').attr('data-src', videoCover.find('iframe').attr('src'));
-			        videoCover.find('iframe').attr('src','');
-			    }
-			});
+            $('.video-cover').each(function(){
+                var videoCover = $(this);
+                if(videoCover.find('iframe').length){
+                    videoCover.find('iframe').attr('data-src', videoCover.find('iframe').attr('src'));
+                    videoCover.find('iframe').attr('src','');
+                }
+            });
 
-			$('.video-cover .video-play-icon').on("click", function(){
-			    var playIcon = $(this);
-			    var videoCover = playIcon.closest('.video-cover');
-			    if(videoCover.find('video').length){
-			        var video = videoCover.find('video').get(0);
-			        videoCover.addClass('reveal-video');
-			        video.play();
-			        return false;
-			    }else if(videoCover.find('iframe').length){
-			        var iframe = videoCover.find('iframe');
-			        iframe.attr('src',iframe.attr('data-src'));
-			        videoCover.addClass('reveal-video');
-			        return false;
-			    }
-			});
-	  };
+            $('.video-cover .video-play-icon').on("click", function(){
+                var playIcon = $(this);
+                var videoCover = playIcon.closest('.video-cover');
+                if(videoCover.find('video').length){
+                    var video = videoCover.find('video').get(0);
+                    videoCover.addClass('reveal-video');
+                    video.play();
+                    return false;
+                }else if(videoCover.find('iframe').length){
+                    var iframe = videoCover.find('iframe');
+                    iframe.attr('src',iframe.attr('data-src'));
+                    videoCover.addClass('reveal-video');
+                    return false;
+                }
+            });
+      };
 
-	  mr.video = {
-	      documentReady : documentReady        
-	  };
+      mr.video = {
+          documentReady : documentReady        
+      };
 
-	  mr.components.documentReady.push(documentReady);
-	  return mr;
+      mr.components.documentReady.push(documentReady);
+      return mr;
 
 }(mr, jQuery, window, document));
